@@ -8,7 +8,7 @@ TestPilot AI explores an authorized web application, generates test scenarios us
 
 - Phase 1 (foundation) — complete
 - Phase 2 (browser engine) — complete
-- Phase 3 (AI layer) — complete with MockAdapter; **live Meta inference pending proxy token verification**
+- Phase 3 (AI layer) - complete; live Meta Muse Spark Open inference verified via Modal dedicated endpoint
 - Phase 4 (agent loop) — complete (end-to-end verified against demo fixture)
 - Phase 5 (reporting) — complete (HTML report download)
 - Phase 6 (demo & polish) — complete (live Meta integration verified, screenshots, billing docs, tests)
@@ -19,7 +19,7 @@ TestPilot AI explores an authorized web application, generates test scenarios us
 - Zod for schemas and model-output validation
 - Playwright for browser automation
 - File-based storage adapter (repository interfaces; Supabase-ready)
-- Modal shared endpoint for Meta Muse Spark Open (OpenAI-compatible)
+- Modal dedicated endpoint for Meta Muse Spark Open (OpenAI-compatible)
 
 ## Quick start
 
@@ -74,6 +74,7 @@ Billing: this is a dedicated endpoint (compute/GPU time), not per-token. See `do
 ## Known limitations
 
 - Storage is file-based (`.data/`); not durable across deployments. Swap the repository implementation for Supabase for production.
-- Live Meta inference requires a Modal proxy token not present in this environment.
+- Live Meta inference was verified against a provisioned Modal dedicated endpoint. Reproducing it requires your own Modal proxy token and endpoint (see `.env.example` and `docs/modal-billing.md`).
+- The dedicated endpoint's GPU type, scale-to-zero, and compute cost are configured in the Modal dashboard and are not verified by this repository.
 - No PDF export yet (HTML report only).
 - No authentication/multi-user support in MVP.
