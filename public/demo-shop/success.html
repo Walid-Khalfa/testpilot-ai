@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Demo Shop — Checkout (SUCCESS PATH)</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:600px;margin:2rem auto;padding:0 1rem}
+h1{color:#1a1a1a}
+label{display:block;margin:.75rem 0 .25rem;font-weight:600}
+input{width:100%;padding:.5rem;border:1px solid #ccc;border-radius:.25rem;box-sizing:border-box}
+button{margin-top:1rem;padding:.6rem 1.2rem;background:#2563eb;color:#fff;border:none;border-radius:.25rem;cursor:pointer}
+.note{background:#d1e7dd;padding:.75rem;border-radius:.25rem;margin-top:1rem;font-size:.85rem;display:none}
+</style>
+</head>
+<body>
+<h1>Demo Shop — Checkout (success path)</h1>
+<p>This page shows the expected confirmation after submit (control scenario).</p>
+<form id="checkout-form" novalidate>
+  <label for="name">Full name</label>
+  <input id="name" name="name" type="text" required />
+  <label for="email">Email</label>
+  <input id="email" name="email" type="email" required />
+  <label for="address">Shipping address</label>
+  <input id="address" name="address" type="text" required />
+  <button id="submit-order" type="submit">Place order</button>
+</form>
+<div id="confirmation" class="note">Order confirmed — thank you!</div>
+<script>
+document.getElementById('checkout-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  document.getElementById('confirmation').style.display = 'block';
+});
+</script>
+</body>
+</html>
