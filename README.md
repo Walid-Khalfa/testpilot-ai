@@ -46,7 +46,8 @@ Demo flow:
 npm run typecheck   # tsc --noEmit
 npm run lint        # eslint
 npm run test        # vitest
-npm run build       # next build
+npm run build       # next build (Turbopack)
+npm run build:webpack # next build (Webpack fallback)
 ```
 
 ## Security

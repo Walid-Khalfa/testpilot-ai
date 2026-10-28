@@ -83,6 +83,15 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
     await runRepo.save(run);
     if (!navResult.ok) {
       pushEvent(run, cb, "error", `Initial navigation failed: ${navResult.evidence}`);
+      run.status = "failed";
+      run.error = `Initial navigation failed: ${navResult.evidence}`;
+      await executor.stop();
+      run.finishedAt = new Date().toISOString();
+      run.estimatedCostUsd =
+        run.tokenUsage.promptTokens * (1.25 / 1_000_000) +
+        run.tokenUsage.completionTokens * (4.25 / 1_000_000);
+      await runRepo.save(run);
+      return run;
     }
 
     // Plan tests
@@ -179,18 +188,20 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
         pushEvent(run, cb, "verify", assertion.passed ? `Assertion passed: ${assertion.description}` : `Assertion FAILED: ${assertion.description}`, { assertion });
         if (!assertion.passed && assertion.expected.trim() !== "" && !run.findings.some((f) => f.title === `Assertion failed: ${assertion.description}`)) {
           // create finding
-          // Grounding check: is the expected text present in the page DOM (even if hidden)
-          // OR referenced by the project objective / scenario expected results?
-          // If yes, the expectation is grounded -> confirmed defect. If not, it may be
-          // LLM-invented -> keep as suspected.
-          let grounded = false;
-          try {
-            const html = await executor.getPage().content();
-            const exp = assertion.expected.toLowerCase();
-            // Only the page DOM (including hidden elements) can confirm a defect.
-            // Objective/scenario text is LLM/user-authored and must not alone confirm.
-            grounded = html.toLowerCase().includes(exp);
-          } catch { grounded = false; }
+          // Grounding check: an expectation is "grounded" only when it is explicitly
+          // declared in the project objective, testing instructions, or a scenario's
+          // expectedResults. Raw DOM presence (including hidden elements) is NOT used,
+          // so hidden text cannot by itself confirm a defect.
+          const exp = assertion.expected.toLowerCase().trim();
+          const grounded =
+            exp.length > 0 && (
+              project.objective.toLowerCase().includes(exp) ||
+              (project.instructions || "").toLowerCase().includes(exp) ||
+              run.scenarios.some((s) =>
+                s.expectedResults.some((r) => r.toLowerCase().includes(exp)) ||
+                s.steps.some((st) => st.expected.toLowerCase().includes(exp))
+              )
+            );
           const finding: Finding = {
             id: crypto.randomUUID(),
             type: "failed_assertion",

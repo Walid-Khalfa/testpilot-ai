@@ -214,17 +214,20 @@ export class BrowserExecutor {
           return { action, ok: true, evidence: `Checked element.`, durationMs: Date.now() - start, timestamp: stamp };
         }
         case "assert_text": {
+          // Only visible page content counts; hidden elements must not satisfy.
           const bodyText = await page.locator("body").innerText().catch(() => "");
-          const found = bodyText.toLowerCase().includes(action.text.toLowerCase());
-          // if locator provided, also check that element
-          let locFound = found;
+          let ok = false;
           if (action.locator) {
+            // When a locator is provided, the expected text must be present in
+            // THAT element's visible text, not merely somewhere on the page.
             try {
               const loc = this.resolveLocator(action.locator);
-              locFound = (await loc.count()) > 0;
-            } catch { locFound = found; }
+              const elText = await loc.first().innerText().catch(() => "");
+              ok = (await loc.count()) > 0 && elText.toLowerCase().includes(action.text.toLowerCase());
+            } catch { ok = false; }
+          } else {
+            ok = bodyText.toLowerCase().includes(action.text.toLowerCase());
           }
-          const ok = found || locFound;
           const shot = await this.captureScreenshot("assert");
           return { action, ok, evidence: ok ? `Text "${action.text}" found on page.` : `Text "${action.text}" NOT found on page.`, durationMs: Date.now() - start, screenshotPath: shot, timestamp: stamp };
         }

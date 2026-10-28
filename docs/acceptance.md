@@ -23,3 +23,10 @@
 | 18 | PDF export | NOT VERIFIED | HTML only (P2) |
 | 19 | Multi-user auth | NOT VERIFIED | Out of MVP scope |
 | 20 | Live Meta tool-calling quality | PARTIAL | Model returns valid JSON after retry/normalization; structured output works |
+## Regression verification (Phase 6E)
+
+- assert_text with a locator requires the expected text in that element (regression test added).
+- Hidden DOM text alone cannot confirm a defect (regression test added).
+- Navigation failure records a failed run (regression test added).
+- Turbopack build remains environment-specific; Webpack fallback verified.
+

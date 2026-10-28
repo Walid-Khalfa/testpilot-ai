@@ -20,3 +20,5 @@
 - File-based storage is not encrypted at rest
 - Egress filtering is best-effort at the Playwright context level
 - Local demo mode weakens SSRF protection and must remain disabled in production
+- API routes are unauthenticated in the MVP; deploy behind an authenticated gateway/reverse proxy before public exposure
+- Synchronous execution endpoint may exceed serverless request timeouts for long runs; use bounded limits or async polling in production
