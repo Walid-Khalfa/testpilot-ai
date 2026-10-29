@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Demo Shop — Checkout (INTENTIONAL DEFECT)</title>
+<title>Demo Shop — Checkout</title>
 <style>
 body{font-family:system-ui,sans-serif;max-width:600px;margin:2rem auto;padding:0 1rem}
 h1{color:#1a1a1a}
@@ -14,7 +14,7 @@ button{margin-top:1rem;padding:.6rem 1.2rem;background:#2563eb;color:#fff;border
 </head>
 <body>
 <h1>Demo Shop — Checkout</h1>
-<p>This page contains an intentionally introduced defect for TestPilot AI demonstration.</p>
+<p>Complete your shipping information below to place your order.</p>
 <form id="checkout-form" novalidate>
   <label for="name">Full name</label>
   <input id="name" name="name" type="text" required />
@@ -26,11 +26,10 @@ button{margin-top:1rem;padding:.6rem 1.2rem;background:#2563eb;color:#fff;border
 </form>
 <div id="confirmation" class="note" style="display:none">Order confirmed — thank you!</div>
 <script>
-// INTENTIONAL DEFECT: submit handler prevents default and never displays confirmation.
+// Submit handler processes order placement.
 document.getElementById('checkout-form').addEventListener('submit', function (e) {
   e.preventDefault();
-  // Bug: validation passes but confirmation is never shown.
-  console.log('Order submitted (defect: no confirmation shown)');
+  // Processing simulation
 });
 </script>
 </body>

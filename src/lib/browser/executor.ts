@@ -222,11 +222,14 @@ export class BrowserExecutor {
           let ok = false;
           if (action.locator) {
             // When a locator is provided, the expected text must be present in
-            // THAT element's visible text, not merely somewhere on the page.
+            // THAT element's visible text, not merely somewhere on the page,
+            // and the element itself must be visible.
             try {
               const loc = this.resolveLocator(action.locator);
-              const elText = await loc.first().innerText().catch(() => "");
-              ok = (await loc.count()) > 0 && elText.toLowerCase().includes(action.text.toLowerCase());
+              const first = loc.first();
+              const isVisible = await first.isVisible().catch(() => false);
+              const elText = await first.innerText().catch(() => "");
+              ok = (await loc.count()) > 0 && isVisible && elText.toLowerCase().includes(action.text.toLowerCase());
             } catch { ok = false; }
           } else {
             ok = bodyText.toLowerCase().includes(action.text.toLowerCase());

@@ -3,8 +3,9 @@ import http from "node:http";
 import { BrowserExecutor } from "@/lib/browser/executor";
 
 const HTML = `<!DOCTYPE html><html><body>
-  <p>Hello world</p>
+  <p id="visible-msg">Hello world</p>
   <div id="target">Goodbye</div>
+  <div id="hidden-msg" style="display:none">Secret confirmation</div>
 </body></html>`;
 
 describe("BrowserExecutor assert_text", () => {
@@ -40,4 +41,36 @@ describe("BrowserExecutor assert_text", () => {
     await exec.stop();
     expect(res.ok).toBe(false);
   });
+
+  it("passes when locator targets a visible element containing the text", async () => {
+    const exec = new BrowserExecutor({ allowedDomain: "127.0.0.1", maxPages: 5, localDemo: true });
+    await exec.start();
+    exec.attachListeners();
+    await exec.execute({ type: "navigate", url });
+    const res = await exec.execute({ type: "assert_text", text: "Hello world", locator: { text: "Hello world" } });
+    await exec.stop();
+    expect(res.ok).toBe(true);
+  });
+
+  it("fails when locator targets a hidden element (regression)", async () => {
+    const exec = new BrowserExecutor({ allowedDomain: "127.0.0.1", maxPages: 5, localDemo: true });
+    await exec.start();
+    exec.attachListeners();
+    await exec.execute({ type: "navigate", url });
+    const res = await exec.execute({ type: "assert_text", text: "Secret confirmation", locator: { text: "Secret confirmation" } });
+    await exec.stop();
+    expect(res.ok).toBe(false);
+  });
+
+  it("fails when expected text is completely absent (unscoped and locator-scoped)", async () => {
+    const exec = new BrowserExecutor({ allowedDomain: "127.0.0.1", maxPages: 5, localDemo: true });
+    await exec.start();
+    exec.attachListeners();
+    await exec.execute({ type: "navigate", url });
+    const resUnscoped = await exec.execute({ type: "assert_text", text: "Non-existent text" });
+    const resScoped = await exec.execute({ type: "assert_text", text: "Non-existent text", locator: { text: "Goodbye" } });
+    await exec.stop();
+    expect(resUnscoped.ok).toBe(false);
+    expect(resScoped.ok).toBe(false);
+  }, 15000);
 });

@@ -19,12 +19,14 @@ TestPilot AI is an autonomous, verifiable QA agent: OBSERVE → REASON → PLAN 
 - Next.js 16 (App Router, strict TS), Tailwind, Zod.
 - Playwright browser executor with accessibility locators, SSRF protection, domain allowlisting, egress restriction, bounded runs.
 - File-based storage with repository interfaces (Supabase-ready).
-- 12 automated tests (unit + integration), typecheck, lint, build all pass.
+- Requirement Coverage engine tracking explicit user-authored requirements (`not_tested`, `passed`, `failed`, `blocked`) with termination gating and grounded defect classification (`confirmed` vs. `suspected`).
+- 26 automated tests (unit + integration), typecheck, lint, build all pass.
 
 ## Evidence
-- Defective e-commerce fixture with an intentionally introduced defect (submit silently fails to show confirmation).
-- Agent detects it via a real Playwright assertion, captures a screenshot, and emits a confirmed finding with reproduction steps.
-- Downloadable HTML report includes metadata, scenarios, actions, assertions, findings, timeline, tokens/cost.
+- Paired realistic checkout fixtures (defective submit failure vs. working confirmation).
+- Agent detects silent submission failure via real Playwright visibility-aware assertion, captures screenshot, and emits a confirmed finding with reproduction steps and requirement failure.
+- Control scenario executes cleanly with requirement passed and 0 findings.
+- Downloadable HTML report includes metadata, requirement coverage, scenarios, actions, assertions, findings, timeline, tokens/cost.
 
 ## Security
 - Explicit authorization confirmation, domain allowlisting, URL normalization, DNS/IP validation, SSRF protection, redirect validation, bounded execution, no arbitrary JS/eval, secrets via env only.

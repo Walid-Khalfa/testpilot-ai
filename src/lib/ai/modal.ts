@@ -192,7 +192,7 @@ export class ModalModelAdapter implements ModelAdapter {
       {
         role: "system",
         content:
-          "You are TestPilot AI. Return ONLY a JSON object matching: {\"scenarios\":[{id,title,objective,preconditions:[],steps:[{description,expected}],expectedResults:[],priority,risk,page,confidenceNotes}]}. No prose. expectedResults must be concrete observable strings present in the application UI.",
+          "You are TestPilot AI. Return ONLY a JSON object matching: {\"scenarios\":[{id,title,objective,preconditions:[],steps:[{description,expected}],expectedResults:[],priority,risk,page,confidenceNotes}]}. No prose. expectedResults must be concrete observable strings expected to be visible in the UI when the scenario succeeds (including explicit user-specified requirements from the objective or instructions).",
       },
       {
         role: "user",
@@ -233,7 +233,7 @@ export class ModalModelAdapter implements ModelAdapter {
       {
         role: "system",
         content:
-          "You are TestPilot AI. Given observation and plan, choose ONE next action. Return ONLY JSON: {\"reasoning\":\"...\",\"action\":{\"type\":..., ...}}. Allowed types: navigate,click,fill,select,check,assert_text,assert_url,assert_visible,wait,screenshot,finish. For assert_text, the text MUST be copied verbatim from the observation (headings or page text) or the scenario expectedResults; never invent expected text.",
+          "You are TestPilot AI. Given observation and plan, choose ONE next action. Return ONLY JSON: {\"reasoning\":\"...\",\"action\":{\"type\":..., ...}}. Allowed types: navigate,click,fill,select,check,assert_text,assert_url,assert_visible,wait,screenshot,finish. For assert_text, text should be an explicit expected string from the objective/instructions, outstanding requirements, scenario expectedResults, or current observation; never invent arbitrary ungrounded text.",
       },
       {
         role: "user",
