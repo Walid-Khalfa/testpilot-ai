@@ -69,6 +69,7 @@ export const ObservationSchema = z.object({
   url: z.string().url(),
   title: z.string(),
   headings: z.array(z.string()).max(50),
+  visibleText: z.array(z.string()).max(80).optional(),
   interactiveElements: z.array(InteractiveElementSchema).max(100),
   formFields: z.array(FormFieldSchema).max(50),
   consoleErrors: z.array(z.string()).max(50),

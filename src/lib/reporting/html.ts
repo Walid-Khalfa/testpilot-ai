@@ -1,15 +1,27 @@
 import type { Run, Project } from "../schemas";
+import fs from "node:fs";
+import path from "node:path";
 
 export function renderReportHtml(run: Run, project: Project): string {
   const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const embedShot = (p: string): string => {
+    try {
+      const rel = p.replace(/^\.data\//, "");
+      const file = path.resolve(process.cwd(), ".data", rel);
+      const buf = fs.readFileSync(file);
+      return `<img src="data:image/png;base64,${buf.toString("base64")}" alt="evidence" style="max-width:320px;border:1px solid #ddd;border-radius:.25rem;margin:.25rem 0" />`;
+    } catch {
+      return `<span class="ev">Evidence: ${esc(p)}</span>`;
+    }
+  };
   const stepRows = run.steps
-    .map((s, i) => `<tr><td>${i + 1}</td><td>${esc(s.action.type)}</td><td>${s.ok ? "OK" : "FAIL"}</td><td>${esc(s.evidence)}</td><td>${s.durationMs}ms</td></tr>`)
+    .map((s, i) => `<tr><td>${i + 1}</td><td>${esc(s.action.type)}</td><td>${s.ok ? "OK" : "FAIL"}</td><td>${esc(s.evidence)}</td><td>${s.screenshotPath ? embedShot(s.screenshotPath) : "—"}</td><td>${s.durationMs}ms</td></tr>`)
     .join("");
   const assertionRows = run.assertions
     .map((a) => `<tr><td>${esc(a.description)}</td><td>${esc(a.expected)}</td><td>${esc(a.actual)}</td><td>${a.passed ? "PASS" : "FAIL"}</td></tr>`)
     .join("");
   const findingBlocks = run.findings
-    .map((f) => `<div class="finding"><h3>${esc(f.title)} <span class="sev">${esc(f.severity)}</span> <span class="status">${esc(f.status)}</span></h3><p>${esc(f.description)}</p><p><b>Expected:</b> ${esc(f.expected)}</p><p><b>Actual:</b> ${esc(f.actual)}</p><h4>Reproduction steps</h4><ol>${f.reproSteps.map((r) => `<li>${esc(r)}</li>`).join("")}</ol>${f.evidenceRefs.map((e) => `<p class="ev">Evidence: ${esc(e)}</p>`).join("")}</div>`)
+    .map((f) => `<div class="finding"><h3>${esc(f.title)} <span class="sev">${esc(f.severity)}</span> <span class="status">${esc(f.status)}</span></h3><p>${esc(f.description)}</p><p><b>Expected:</b> ${esc(f.expected)}</p><p><b>Actual:</b> ${esc(f.actual)}</p><h4>Reproduction steps</h4><ol>${f.reproSteps.map((r) => `<li>${esc(r)}</li>`).join("")}</ol>${f.evidenceRefs.map((e) => `<div>${embedShot(e)}</div>`).join("")}</div>`)
     .join("");
   const scenarioBlocks = run.scenarios
     .map((s) => `<div><h3>${esc(s.title)}</h3><p>${esc(s.objective)}</p><p>Priority: ${esc(s.priority)} · Risk: ${esc(s.risk)}</p></div>`)
@@ -51,7 +63,7 @@ th{background:#f5f5f5} .finding{border:1px solid #e0a; padding:1rem; margin:1rem
 </div>
 <h2>Scenarios</h2>${scenarioBlocks || "<p>None.</p>"}
 <h2>Actions executed</h2>
-<table><thead><tr><th>#</th><th>Action</th><th>Result</th><th>Evidence</th><th>Duration</th></tr></thead><tbody>${stepRows || "<tr><td colspan=5>None</td></tr>"}</tbody></table>
+<table><thead><tr><th>#</th><th>Action</th><th>Result</th><th>Evidence</th><th>Screenshot</th><th>Duration</th></tr></thead><tbody>${stepRows || "<tr><td colspan=6>None</td></tr>"}</tbody></table>
 <h2>Assertions</h2>
 <table><thead><tr><th>Description</th><th>Expected</th><th>Actual</th><th>Result</th></tr></thead><tbody>${assertionRows || "<tr><td colspan=4>None</td></tr>"}</tbody></table>
 <h2>Findings</h2>${findingBlocks || "<p>No findings.</p>"}

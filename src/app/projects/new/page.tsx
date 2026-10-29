@@ -6,7 +6,7 @@ const DEFAULTS = {
   name: "Demo Shop Checkout",
   targetUrl: "http://localhost:3000/demo-shop/index.html",
   authorizedDomain: "localhost",
-  objective: "Verify the checkout form submits and displays an order confirmation.",
+  objective: "Verify the checkout form submits and displays 'Order confirmed'.",
   maxDurationSec: 120,
   maxSteps: 20,
   maxPages: 10,

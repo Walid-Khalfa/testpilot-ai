@@ -261,13 +261,14 @@ export class ModalModelAdapter implements ModelAdapter {
         if (action && typeof action.type === "string") {
           const needsLocator = ["click", "fill", "select", "check", "assert_visible"].includes(action.type);
           if (needsLocator && (!action.locator || typeof action.locator !== "object")) {
-            // try to infer from observation interactive elements
             const obs = input.observation;
-            const candidate = obs.interactiveElements?.[0];
-            if (candidate?.locator) action.locator = candidate.locator;
-            else if (obs.formFields?.[0]) {
-              const f = obs.formFields[0];
-              action.locator = f.label ? { label: f.label } : { label: f.name };
+            if (action.type === "fill" || action.type === "select") {
+              const f = obs.formFields?.[0];
+              if (f) action.locator = f.label ? { label: f.label } : { label: f.name };
+            } else {
+              // click/check/assert_visible: prefer a button-like interactive element
+              const btn = obs.interactiveElements?.find((e) => e.role === "button") || obs.interactiveElements?.[0];
+              if (btn?.locator) action.locator = btn.locator;
             }
           }
           if (action.type === "fill" && typeof action.value !== "string") {

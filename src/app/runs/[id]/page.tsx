@@ -54,10 +54,15 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
         <h2 className="mb-3 text-xl font-semibold">Timeline</h2>
         <ol className="space-y-1 rounded border bg-white p-4 text-sm">
           {run.timeline.map((t) => (
-            <li key={t.id} className="flex gap-2">
-              <span className="font-mono text-xs text-slate-400">{t.timestamp.slice(11, 19)}</span>
-              <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${kindColor(t.kind)}`}>{t.kind}</span>
-              <span>{t.message}</span>
+            <li key={t.id} className="flex flex-col gap-1">
+              <div className="flex gap-2">
+                <span className="font-mono text-xs text-slate-400">{t.timestamp.slice(11, 19)}</span>
+                <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${kindColor(t.kind)}`}>{t.kind}</span>
+                <span>{t.message}</span>
+              </div>
+              {t.kind === "reason" && (t.data as { reasoning?: string })?.reasoning ? (
+                <div className="ml-6 text-xs italic text-slate-500">Rationale: {String((t.data as { reasoning?: string }).reasoning).slice(0, 400)}</div>
+              ) : null}
             </li>
           ))}
         </ol>

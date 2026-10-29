@@ -114,6 +114,8 @@ export class BrowserExecutor {
     const url = page.url();
     const title = await page.title().catch(() => "");
     const headings = await page.locator("h1,h2,h3").allInnerTexts().catch(() => []);
+    const visibleTextRaw = await page.locator("p, li, [role='alert'], [role='status'], .notification, .message, .error, .success").allInnerTexts().catch(() => []);
+    const visibleText = Array.from(new Set(visibleTextRaw.map((t) => t.trim().slice(0, 200)).filter(Boolean))).slice(0, 80);
     const interactiveElements = await this.observeInteractive();
     const formFields = await this.observeForms();
     // console errors collected via page listeners (store on instance)
@@ -125,6 +127,7 @@ export class BrowserExecutor {
       url,
       title,
       headings: headings.map((h) => h.trim().slice(0, 120)).filter(Boolean).slice(0, 50),
+      visibleText,
       interactiveElements,
       formFields,
       consoleErrors,

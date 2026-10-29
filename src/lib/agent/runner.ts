@@ -80,6 +80,7 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
     pushEvent(run, cb, "act", `Navigating to ${project.targetUrl}`);
     const navResult = await executor.execute({ type: "navigate", url: project.targetUrl });
     run.steps.push(navResult);
+    run.pagesVisited = executor.getPagesVisited();
     await runRepo.save(run);
     if (!navResult.ok) {
       pushEvent(run, cb, "error", `Initial navigation failed: ${navResult.evidence}`);
@@ -193,14 +194,13 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
           // expectedResults. Raw DOM presence (including hidden elements) is NOT used,
           // so hidden text cannot by itself confirm a defect.
           const exp = assertion.expected.toLowerCase().trim();
+          // Only user-authored expectations (objective/instructions) are trustworthy
+          // oracles. LLM-generated scenario expectations must not independently
+          // confirm a defect.
           const grounded =
             exp.length > 0 && (
               project.objective.toLowerCase().includes(exp) ||
-              (project.instructions || "").toLowerCase().includes(exp) ||
-              run.scenarios.some((s) =>
-                s.expectedResults.some((r) => r.toLowerCase().includes(exp)) ||
-                s.steps.some((st) => st.expected.toLowerCase().includes(exp))
-              )
+              (project.instructions || "").toLowerCase().includes(exp)
             );
           const finding: Finding = {
             id: crypto.randomUUID(),
@@ -214,12 +214,24 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
             evidenceRefs: result.screenshotPath ? [result.screenshotPath] : [],
             reproSteps: [
               `Navigate to ${project.targetUrl}`,
-              ...run.steps.slice(-5).map((s) => `${s.action.type}: ${s.evidence}`),
+              ...run.steps.slice(-5).map((s) => {
+                const a = s.action;
+                const target =
+                  a.type === "navigate" ? a.url :
+                  a.type === "fill" || a.type === "click" || a.type === "select" || a.type === "check" || a.type === "assert_text" || a.type === "assert_visible"
+                    ? JSON.stringify(a.locator || {})
+                    : "";
+                const detail =
+                  a.type === "fill" ? " (input value redacted)" :
+                  a.type === "navigate" ? "" :
+                  ` (${s.evidence})`;
+                return `${a.type}${target ? " on " + target : ""}${detail}`;
+              }),
             ],
             scenarioId: run.scenarios[0]?.id,
           };
           run.findings.push(finding);
-          pushEvent(run, cb, "adapt", "Suspected defect recorded with evidence.", { finding });
+          pushEvent(run, cb, "adapt", `${finding.status === "confirmed" ? "Confirmed" : "Suspected"} defect recorded with evidence.`, { finding });
         }
       } else {
         pushEvent(run, cb, "verify", result.ok ? `Action succeeded: ${action.type}` : `Action failed: ${action.type}`, { result });
@@ -227,6 +239,7 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
 
       // Console errors as suspected findings (once)
       // (handled lightly: add if new errors and no finding yet)
+      run.pagesVisited = executor.getPagesVisited();
       stepCount++;
       await runRepo.save(run);
 
