@@ -188,7 +188,12 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
       run.tokenUsage.totalTokens += usage.totalTokens;
 
       const action = decision.action as AgentAction;
-      pushEvent(run, cb, "reason", `Model chose: ${action.type}`, { reasoning: decision.reasoning, action });
+      pushEvent(run, cb, "reason", `Model chose: ${action.type}`, {
+        reasoning: decision.reasoning,
+        visualObservation: decision.visualObservation,
+        visionMode: decision.visionMode,
+        action,
+      });
 
       // Policy validation: re-validate navigate URLs; block dangerous actions by type (already typed, no JS).
       if (action.type === "navigate") {

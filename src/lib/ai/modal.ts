@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { ModelAdapter, AiConfig } from "./types";
 import type { Observation, TestPlan, AgentDecision, TokenUsage } from "../schemas";
 import { TestPlanSchema, AgentDecisionSchema } from "../schemas";
@@ -5,6 +7,61 @@ import { loadEnv } from "../schemas";
 
 const DEFAULT_BASE = "https://inference.us-west.modal.direct/v1";
 const MUSE_SPARK_MATCH = /muse[-_ ]?spark/i;
+const MAX_IMAGE_BYTES = 250_000;
+
+export type ChatContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+export type ChatMessage = {
+  role: string;
+  content: string | ChatContentPart[];
+};
+
+export function loadScreenshotDataUrl(screenshotPath?: string): string | null {
+  if (!screenshotPath) return null;
+  if ((process.env.ENABLE_MULTIMODAL_VISION || "").toLowerCase() === "false") return null;
+  try {
+    const rel = screenshotPath.replace(/^\.data\//, "");
+    if (!/^screenshots\/[A-Za-z0-9_.-]+\.png$/.test(rel)) return null;
+    const baseDir = loadEnv().DATA_DIR || ".data";
+    const file = path.resolve(process.cwd(), baseDir, rel);
+    const stat = fs.statSync(file);
+    if (!stat.isFile() || stat.size === 0 || stat.size > MAX_IMAGE_BYTES) return null;
+    const buf = fs.readFileSync(file);
+    return `data:image/png;base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+export function shouldAttachScreenshot(history: string): boolean {
+  const stepLines = history
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("{"));
+  if (stepLines.length === 0) return true;
+  try {
+    const last = JSON.parse(stepLines[stepLines.length - 1]) as {
+      action?: { type?: string };
+      result?: string;
+    };
+    const actionType = last.action?.type || "";
+    if (["click", "navigate", "wait", "screenshot"].includes(actionType)) return true;
+    if (last.result === "fail") return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function buildUserContent(textPrompt: string, dataUrl: string | null): string | ChatContentPart[] {
+  if (!dataUrl) return textPrompt;
+  return [
+    { type: "text", text: textPrompt },
+    { type: "image_url", image_url: { url: dataUrl } },
+  ];
+}
 
 export function resolveModelProvider(): "mock" | "modal" {
   const forced = (process.env.MODEL_PROVIDER || "").toLowerCase();
@@ -58,7 +115,7 @@ export function extractJson(text: string): unknown {
   return JSON.parse(candidate.slice(start, end + 1));
 }
 
-async function chat(cfg: AiConfig, messages: Array<{ role: string; content: string }>, timeoutMs = 120000, maxTokens = 2048): Promise<{ content: string; usage: TokenUsage }> {
+async function chat(cfg: AiConfig, messages: ChatMessage[], timeoutMs = 120000, maxTokens = 2048, maxAttempts = 3): Promise<{ content: string; usage: TokenUsage }> {
   if (!cfg.proxyToken) throw new Error("MODAL_PROXY_TOKEN is not configured.");
   if (!cfg.endpointBaseUrl) throw new Error("MODAL_ENDPOINT_BASE_URL is not configured.");
   if (cfg.modelId === "auto") {
@@ -67,7 +124,6 @@ async function chat(cfg: AiConfig, messages: Array<{ role: string; content: stri
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   let attempt = 0;
-  const maxAttempts = 3;
   let lastErr: unknown;
   while (attempt < maxAttempts) {
     attempt++;
@@ -188,18 +244,34 @@ export class ModalModelAdapter implements ModelAdapter {
   }
 
   async planTests(observation: Observation, objective: string, instructions?: string): Promise<{ plan: TestPlan; usage: TokenUsage }> {
-    const messages = [
-      {
-        role: "system",
-        content:
-          "You are TestPilot AI. Return ONLY a JSON object matching: {\"scenarios\":[{id,title,objective,preconditions:[],steps:[{description,expected}],expectedResults:[],priority,risk,page,confidenceNotes}]}. No prose. expectedResults must be concrete observable strings expected to be visible in the UI when the scenario succeeds (including explicit user-specified requirements from the objective or instructions).",
-      },
-      {
-        role: "user",
-        content: `Objective: ${objective}\nInstructions: ${instructions || "none"}\nObservation: ${JSON.stringify(observation).slice(0, 12000)}`,
-      },
+    const systemMsg = {
+      role: "system",
+      content:
+        "You are TestPilot AI. Return ONLY a JSON object matching: {\"scenarios\":[{id,title,objective,preconditions:[],steps:[{description,expected}],expectedResults:[],priority,risk,page,confidenceNotes}]}. No prose. expectedResults must be concrete observable strings expected to be visible in the UI when the scenario succeeds (including explicit user-specified requirements from the objective or instructions).",
+    };
+    const userText = `Objective: ${objective}\nInstructions: ${instructions || "none"}\nObservation: ${JSON.stringify(observation).slice(0, 12000)}`;
+    const dataUrl = loadScreenshotDataUrl(observation.screenshotPath);
+    const messages: ChatMessage[] = [
+      systemMsg,
+      { role: "user", content: buildUserContent(userText, dataUrl) },
     ];
-    const { content, usage } = await chat(this.cfg, messages, 120000, 4096);
+    let content: string;
+    let usage: TokenUsage;
+    if (dataUrl) {
+      try {
+        const res = await chat(this.cfg, messages, 120000, 4096, 1);
+        content = res.content;
+        usage = res.usage;
+      } catch {
+        const res = await chat(this.cfg, [systemMsg, { role: "user", content: userText }], 120000, 4096);
+        content = res.content;
+        usage = res.usage;
+      }
+    } else {
+      const res = await chat(this.cfg, messages, 120000, 4096);
+      content = res.content;
+      usage = res.usage;
+    }
     const parsed = extractJson(content) as Record<string, unknown>;
     if (parsed && Array.isArray(parsed.scenarios)) {
       const PRIORITIES = new Set(["low", "medium", "high", "critical"]);
@@ -229,33 +301,64 @@ export class ModalModelAdapter implements ModelAdapter {
     history: string;
     objective: string;
   }): Promise<{ decision: AgentDecision; usage: TokenUsage }> {
-    const messages = [
-      {
-        role: "system",
-        content:
-          "You are TestPilot AI. Given observation and plan, choose ONE next action. Return ONLY JSON: {\"reasoning\":\"...\",\"action\":{\"type\":..., ...}}. Allowed types: navigate,click,fill,select,check,assert_text,assert_url,assert_visible,wait,screenshot,finish. For assert_text, text should be an explicit expected string from the objective/instructions, outstanding requirements, scenario expectedResults, or current observation; never invent arbitrary ungrounded text.",
-      },
-      {
-        role: "user",
-        content: `Objective: ${input.objective}\nPlan: ${JSON.stringify(input.plan).slice(0, 8000)}\nHistory: ${input.history.slice(-4000)}\nObservation: ${JSON.stringify(input.observation).slice(0, 12000)}`,
-      },
-    ];
+    const attachImage = shouldAttachScreenshot(input.history);
+    const dataUrl = attachImage ? loadScreenshotDataUrl(input.observation.screenshotPath) : null;
+    const systemMsg = {
+      role: "system",
+      content:
+        "You are TestPilot AI. Given observation and plan, choose ONE next action. Return ONLY JSON: {\"reasoning\":\"...\",\"visualObservation\":\"...\",\"action\":{\"type\":..., ...}}. When a screenshot image is provided, populate visualObservation with a brief, factual description of the visible UI state (e.g. filled inputs, buttons, or confirmation banners); otherwise omit visualObservation. Allowed types: navigate,click,fill,select,check,assert_text,assert_url,assert_visible,wait,screenshot,finish. For assert_text, text should be an explicit expected string from the objective/instructions, outstanding requirements, scenario expectedResults, or current observation; never invent arbitrary ungrounded text.",
+    };
+    const userText = `Objective: ${input.objective}\nPlan: ${JSON.stringify(input.plan).slice(0, 8000)}\nHistory: ${input.history.slice(-4000)}\nObservation: ${JSON.stringify(input.observation).slice(0, 12000)}`;
+    let useMultimodal = Boolean(dataUrl);
+    let usedFallback = false;
     let lastErr: unknown;
     const totalUsage: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
     for (let attempt = 0; attempt < 3; attempt++) {
-      const attemptMessages = attempt === 0
-        ? messages
+      const baseMessages: ChatMessage[] = [
+        systemMsg,
+        { role: "user", content: buildUserContent(userText, useMultimodal ? dataUrl : null) },
+      ];
+      const attemptMessages: ChatMessage[] = attempt === 0
+        ? baseMessages
         : [
-            ...messages,
+            ...baseMessages,
             { role: "assistant", content: "previous output was invalid" },
             { role: "user", content: `Your previous output failed validation: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}. Return corrected JSON only.` },
           ];
-      const { content, usage } = await chat(this.cfg, attemptMessages, 120000, 2048);
+      let content: string;
+      let usage: TokenUsage;
+      try {
+        const res = await chat(this.cfg, attemptMessages, 120000, 2048, useMultimodal ? 1 : 3);
+        content = res.content;
+        usage = res.usage;
+      } catch (chatErr) {
+        if (useMultimodal) {
+          useMultimodal = false;
+          usedFallback = true;
+          const fallbackMsgs: ChatMessage[] = [
+            systemMsg,
+            { role: "user", content: userText },
+          ];
+          const res = await chat(this.cfg, fallbackMsgs, 120000, 2048);
+          content = res.content;
+          usage = res.usage;
+        } else {
+          throw chatErr;
+        }
+      }
       totalUsage.promptTokens += usage.promptTokens;
       totalUsage.completionTokens += usage.completionTokens;
       totalUsage.totalTokens += usage.totalTokens;
       try {
         const parsed = extractJson(content) as Record<string, unknown>;
+        parsed.visionMode = useMultimodal
+          ? "multimodal"
+          : usedFallback
+            ? "text_fallback"
+            : "text_only";
+        if (typeof parsed.visualObservation !== "string" || !parsed.visualObservation.trim()) {
+          delete parsed.visualObservation;
+        }
         // Normalize locator if missing for actions that need it
         const action = parsed?.action as Record<string, unknown> | undefined;
         if (action && typeof action.type === "string") {
@@ -279,6 +382,10 @@ export class ModalModelAdapter implements ModelAdapter {
         return { decision, usage: totalUsage };
       } catch (err) {
         lastErr = err;
+        if (useMultimodal) {
+          useMultimodal = false;
+          usedFallback = true;
+        }
       }
     }
     throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));

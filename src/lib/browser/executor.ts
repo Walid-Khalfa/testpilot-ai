@@ -114,7 +114,7 @@ export class BrowserExecutor {
     const url = page.url();
     const title = await page.title().catch(() => "");
     const headings = await page.locator("h1,h2,h3").allInnerTexts().catch(() => []);
-    const visibleTextRaw = await page.locator("p, li, [role='alert'], [role='status'], .notification, .message, .error, .success").allInnerTexts().catch(() => []);
+    const visibleTextRaw = await page.locator("p:visible, li:visible, [role='alert']:visible, [role='status']:visible, .notification:visible, .message:visible, .error:visible, .success:visible, .note:visible").allInnerTexts().catch(() => []);
     const visibleText = Array.from(new Set(visibleTextRaw.map((t) => t.trim().slice(0, 200)).filter(Boolean))).slice(0, 80);
     const interactiveElements = await this.observeInteractive();
     const formFields = await this.observeForms();

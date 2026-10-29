@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { executeRun } from "@/lib/agent/runner";
 import { projectRepo, runRepo } from "@/lib/storage/file-store";
-import { ProjectSchema, RunSchema, type Finding, type RequirementCoverage } from "@/lib/schemas";
+import { ProjectSchema, RunSchema, type Finding } from "@/lib/schemas";
 import crypto from "node:crypto";
 
 import type { ModelAdapter } from "@/lib/ai/types";
@@ -177,5 +177,51 @@ describe("requirement coverage", () => {
       // If a finding exists, it must have evidence
       if (finding) expect(finding.evidenceRefs.length).toBeGreaterThan(0);
     }
+  }, 120000);
+
+  it("visual observation anomaly alone never creates a false confirmed finding", async () => {
+    const visualAnomalyAdapter = {
+      modelId: "mock-vision-anomaly",
+      async planTests() {
+        return {
+          plan: {
+            scenarios: [
+              {
+                id: "s1",
+                title: "Visual checkout check",
+                objective: "Check page",
+                preconditions: [],
+                steps: [{ description: "Observe page", expected: "Clean layout" }],
+                expectedResults: ["No broken layout"],
+                priority: "high",
+                risk: "medium",
+                page: "/",
+              },
+            ],
+          },
+          usage: { promptTokens: 1500, completionTokens: 100, totalTokens: 1600 },
+        };
+      },
+      async nextAction() {
+        return {
+          decision: {
+            reasoning: "The screenshot shows a severe visual layout anomaly and missing banner.",
+            visualObservation: "Red error banner overlapping the checkout button and clipped text.",
+            visionMode: "multimodal",
+            action: { type: "finish", summary: "Completed visual check; noticed visual anomaly." },
+          },
+          usage: { promptTokens: 1500, completionTokens: 80, totalTokens: 1580 },
+        };
+      },
+    } as unknown as ModelAdapter;
+
+    adapterHolder.current = visualAnomalyAdapter;
+    const run = await runWithAdapter(successUrl, visualAnomalyAdapter, "Verify the checkout page works properly.", 4);
+    expect(run.status).toBe("completed");
+    expect(run.findings.filter((f: Finding) => f.status === "confirmed").length).toBe(0);
+    const reasonEvent = run.timeline.find((t) => t.kind === "reason" && t.data);
+    const reasonData = reasonEvent?.data as Record<string, unknown> | undefined;
+    expect(reasonData?.visualObservation).toContain("Red error banner");
+    expect(reasonData?.visionMode).toBe("multimodal");
   }, 120000);
 });

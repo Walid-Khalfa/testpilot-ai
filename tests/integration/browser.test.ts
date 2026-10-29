@@ -6,6 +6,8 @@ const HTML = `<!DOCTYPE html><html><body>
   <p id="visible-msg">Hello world</p>
   <div id="target">Goodbye</div>
   <div id="hidden-msg" style="display:none">Secret confirmation</div>
+  <div id="visible-note" class="note">Order confirmed — thank you!</div>
+  <div id="hidden-note" class="note" style="display:none">Hidden order note</div>
 </body></html>`;
 
 describe("BrowserExecutor assert_text", () => {
@@ -14,7 +16,7 @@ describe("BrowserExecutor assert_text", () => {
 
   beforeAll(async () => {
     process.env.ALLOW_LOCAL_DEMO = "true";
-    server = http.createServer((_req, res) => { res.setHeader("Content-Type", "text/html"); res.end(HTML); });
+    server = http.createServer((_req, res) => { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.end(HTML); });
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
     const addr = server.address() as { port: number };
     url = `http://127.0.0.1:${addr.port}/`;
@@ -72,5 +74,17 @@ describe("BrowserExecutor assert_text", () => {
     await exec.stop();
     expect(resUnscoped.ok).toBe(false);
     expect(resScoped.ok).toBe(false);
+  }, 15000);
+
+  it("includes visible .note elements in observe() visibleText and excludes hidden .note elements", async () => {
+    const exec = new BrowserExecutor({ allowedDomain: "127.0.0.1", maxPages: 5, localDemo: true });
+    await exec.start();
+    exec.attachListeners();
+    await exec.execute({ type: "navigate", url });
+    const obs = await exec.observe();
+    await exec.stop();
+    expect(obs.visibleText).toContain("Order confirmed — thank you!");
+    expect(obs.visibleText).not.toContain("Hidden order note");
+    expect(obs.visibleText).not.toContain("Secret confirmation");
   }, 15000);
 });

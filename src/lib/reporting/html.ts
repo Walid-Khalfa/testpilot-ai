@@ -72,6 +72,12 @@ ${run.requirements.map((r) => `<tr><td>${esc(r.text)}</td><td>${esc(r.source)}</
 <table><thead><tr><th>Description</th><th>Expected</th><th>Actual</th><th>Result</th></tr></thead><tbody>${assertionRows || "<tr><td colspan=4>None</td></tr>"}</tbody></table>
 <h2>Findings</h2>${findingBlocks || "<p>No findings.</p>"}
 <h2>Timeline</h2>
-<ol>${run.timeline.map((t) => `<li><b>${esc(t.kind)}</b> ${esc(t.timestamp)} — ${esc(t.message)}</li>`).join("")}</ol>
+<ol>${run.timeline.map((t) => {
+  const d = (t.data || {}) as { reasoning?: string; visualObservation?: string; visionMode?: string };
+  const reasonHtml = t.kind === "reason" && d.reasoning ? `<div class="ev">Rationale: ${esc(d.reasoning)}</div>` : "";
+  const visHtml = t.kind === "reason" && d.visualObservation ? `<div class="ev">Visual observation (${esc(d.visionMode || "multimodal")}): ${esc(d.visualObservation)}</div>` : "";
+  const fbHtml = t.kind === "reason" && d.visionMode === "text_fallback" ? `<div class="ev">Vision mode: text_fallback</div>` : "";
+  return `<li><b>${esc(t.kind)}</b> ${esc(t.timestamp)} — ${esc(t.message)}${reasonHtml}${visHtml}${fbHtml}</li>`;
+}).join("")}</ol>
 </body></html>`;
 }

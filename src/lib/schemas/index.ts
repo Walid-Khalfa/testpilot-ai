@@ -110,6 +110,8 @@ export type AgentAction = z.infer<typeof AgentActionSchema>;
 
 export const AgentDecisionSchema = z.object({
   reasoning: z.string().max(1000),
+  visualObservation: z.string().max(500).optional(),
+  visionMode: z.enum(["multimodal", "text_fallback", "text_only"]).optional(),
   action: AgentActionSchema,
 });
 export type AgentDecision = z.infer<typeof AgentDecisionSchema>;

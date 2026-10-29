@@ -86,6 +86,14 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
               {t.kind === "reason" && (t.data as { reasoning?: string })?.reasoning ? (
                 <div className="ml-6 text-xs italic text-slate-500">Rationale: {String((t.data as { reasoning?: string }).reasoning).slice(0, 400)}</div>
               ) : null}
+              {t.kind === "reason" && (t.data as { visualObservation?: string; visionMode?: string })?.visualObservation ? (
+                <div className="ml-6 text-xs text-indigo-700">
+                  Visual observation ({String((t.data as { visionMode?: string }).visionMode || "multimodal")}): {String((t.data as { visualObservation?: string }).visualObservation).slice(0, 400)}
+                </div>
+              ) : null}
+              {t.kind === "reason" && (t.data as { visionMode?: string })?.visionMode === "text_fallback" ? (
+                <div className="ml-6 text-xs text-amber-700">Vision mode: text_fallback (multimodal request fell back to text-only)</div>
+              ) : null}
             </li>
           ))}
         </ol>
