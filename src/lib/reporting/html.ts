@@ -61,6 +61,10 @@ th{background:#f5f5f5} .finding{border:1px solid #e0a; padding:1rem; margin:1rem
 <div><b>Tokens</b><br/>prompt ${run.tokenUsage.promptTokens}, completion ${run.tokenUsage.completionTokens}, total ${run.tokenUsage.totalTokens}</div>
 <div><b>Estimated cost (USD)</b><br/>${run.estimatedCostUsd.toFixed(4)}</div>
 </div>
+<h2>Requirement coverage</h2>
+<table><thead><tr><th>Requirement</th><th>Source</th><th>Status</th><th>Evidence</th></tr></thead><tbody>
+${run.requirements.map((r) => `<tr><td>${esc(r.text)}</td><td>${esc(r.source)}</td><td>${esc(r.status)}</td><td>${esc(r.evidence || "—")}</td></tr>`).join("") || "<tr><td colspan=4>None</td></tr>"}
+</tbody></table>
 <h2>Scenarios</h2>${scenarioBlocks || "<p>None.</p>"}
 <h2>Actions executed</h2>
 <table><thead><tr><th>#</th><th>Action</th><th>Result</th><th>Evidence</th><th>Screenshot</th><th>Duration</th></tr></thead><tbody>${stepRows || "<tr><td colspan=6>None</td></tr>"}</tbody></table>

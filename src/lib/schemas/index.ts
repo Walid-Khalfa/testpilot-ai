@@ -189,6 +189,24 @@ export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
 
 // ---------- Run ----------
 
+export const RequirementStatusSchema = z.enum([
+  "not_tested",
+  "in_progress",
+  "passed",
+  "failed",
+  "blocked",
+]);
+export type RequirementStatus = z.infer<typeof RequirementStatusSchema>;
+
+export const RequirementCoverageSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  source: z.enum(["objective", "instructions"]),
+  status: RequirementStatusSchema,
+  evidence: z.string().optional(),
+});
+export type RequirementCoverage = z.infer<typeof RequirementCoverageSchema>;
+
 export const RunStatusSchema = z.enum([
   "queued",
   "running",
@@ -232,6 +250,7 @@ export const RunSchema = z.object({
   assertions: z.array(AssertionResultSchema).default([]),
   findings: z.array(FindingSchema).default([]),
   scenarios: z.array(TestScenarioSchema).default([]),
+  requirements: z.array(RequirementCoverageSchema).default([]),
   tokenUsage: TokenUsageSchema.default({ promptTokens: 0, completionTokens: 0, totalTokens: 0 }),
   estimatedCostUsd: z.number().nonnegative().default(0),
   timeline: z.array(TimelineEventSchema).default([]),

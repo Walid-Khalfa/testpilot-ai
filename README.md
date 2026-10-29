@@ -72,10 +72,17 @@ Billing: this is a dedicated endpoint (compute/GPU time), not per-token. See `do
 
 `public/demo-shop/index.html` contains an intentionally introduced defect: the submit handler prevents default and never displays the expected "Order confirmed" confirmation. The agent detects this through a real Playwright assertion and records a confirmed finding with a screenshot and reproduction steps.
 
+## Requirement coverage
+
+TestPilot AI tracks explicit user-authored requirements (quoted strings in the objective or instructions) independently of model-generated expectations. Each requirement has a state: `not_tested`, `in_progress`, `passed`, `failed`, or `blocked`. The agent cannot finish while requirements remain untested (within safety budgets); untested requirements become `blocked` if limits are reached. Confirmed defects require the expected text to be grounded in user-authored fields, not LLM-invented scenario expectations.
+
+Limitation: only quoted strings are extracted as requirements; objectives without quoted text produce no tracked requirements.
+
 ## Known limitations
 
 - Storage is file-based (`.data/`); not durable across deployments. Swap the repository implementation for Supabase for production.
-- Live Meta inference was verified against a provisioned Modal dedicated endpoint. Reproducing it requires your own Modal proxy token and endpoint (see `.env.example` and `docs/modal-billing.md`).
+- Live Meta inference was verified against a provisioned Modal dedicated endpoint (ping ok:true; defective run recorded a confirmed finding with screenshot; success run completed with 0 findings).
 - The dedicated endpoint's GPU type, scale-to-zero, and compute cost are configured in the Modal dashboard and are not verified by this repository.
+- No PDF export, authentication, or multi-user support in MVP.
 - No PDF export yet (HTML report only).
 - No authentication/multi-user support in MVP.

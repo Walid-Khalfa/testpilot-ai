@@ -40,6 +40,29 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
       {run.error && <div className="rounded bg-red-50 p-3 text-red-700">{run.error}</div>}
 
       <section>
+        <h2 className="mb-3 text-xl font-semibold">Requirement coverage</h2>
+        {run.requirements.length === 0 ? (
+          <p className="text-slate-500">No explicit quoted requirements derived from the objective/instructions.</p>
+        ) : (
+          <div className="overflow-x-auto rounded border bg-white">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-100"><tr><th className="p-2 text-left">Requirement</th><th className="p-2 text-left">Source</th><th className="p-2 text-left">Status</th><th className="p-2 text-left">Evidence</th></tr></thead>
+              <tbody>
+                {run.requirements.map((r) => (
+                  <tr key={r.id} className="border-t">
+                    <td className="p-2">{r.text}</td>
+                    <td className="p-2 text-xs">{r.source}</td>
+                    <td className="p-2"><span className={`rounded px-2 py-0.5 text-xs ${reqColor(r.status)}`}>{r.status}</span></td>
+                    <td className="p-2 text-xs">{r.evidence || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section>
         <h2 className="mb-3 text-xl font-semibold">Scenarios</h2>
         {run.scenarios.length === 0 ? <p className="text-slate-500">None.</p> : run.scenarios.map((s) => (
           <div key={s.id} className="mb-2 rounded border bg-white p-3">
@@ -151,6 +174,16 @@ function Stat({ label, value }: { label: string; value: string }) {
 function shotUrl(p: string): string {
   const rel = p.replace(/^\.data\//, "");
   return "/api/screenshots/" + rel;
+}
+
+function reqColor(s: string): string {
+  switch (s) {
+    case "passed": return "bg-green-100 text-green-700";
+    case "failed": return "bg-red-100 text-red-700";
+    case "blocked": return "bg-gray-200 text-gray-700";
+    case "in_progress": return "bg-blue-100 text-blue-700";
+    default: return "bg-amber-100 text-amber-700";
+  }
 }
 
 function kindColor(kind: string): string {

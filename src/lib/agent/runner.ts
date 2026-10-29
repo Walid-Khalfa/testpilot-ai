@@ -2,7 +2,35 @@ import type { Run, Project, TimelineEvent, AssertionResult, Finding, ActionResul
 import { runRepo } from "../storage/file-store";
 import { createModelAdapter } from "../ai";
 import { BrowserExecutor } from "../browser/executor";
-import type { AgentAction } from "../schemas";
+import type { AgentAction, RequirementCoverage } from "../schemas";
+import { RequirementCoverageSchema } from "../schemas";
+
+function deriveRequirements(project: Project): RequirementCoverage[] {
+  const out: RequirementCoverage[] = [];
+  const seen = new Set<string>();
+  const sources: Array<{ text: string; source: "objective" | "instructions" }> = [
+    { text: project.objective, source: "objective" },
+  ];
+  if (project.instructions) sources.push({ text: project.instructions, source: "instructions" });
+  for (const { text, source } of sources) {
+    // Extract quoted strings (single or double quotes) as explicit expected outcomes.
+    const matches = text.match(/["']([^"']{2,80})["']/g) || [];
+    for (const m of matches) {
+      const val = m.slice(1, -1).trim();
+      if (!val) continue;
+      const key = val.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(RequirementCoverageSchema.parse({
+        id: crypto.randomUUID(),
+        text: val,
+        source,
+        status: "not_tested",
+      }));
+    }
+  }
+  return out;
+}
 
 export interface RunCallbacks {
   onEvent?: (e: TimelineEvent) => void;
@@ -60,6 +88,7 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
   const adapter = createModelAdapter();
   run.modelId = adapter.modelId;
   run.status = "running";
+  run.requirements = deriveRequirements(project);
   await runRepo.save(run);
 
   const executor = new BrowserExecutor({
@@ -105,6 +134,9 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
     run.tokenUsage.completionTokens += planUsage.completionTokens;
     run.tokenUsage.totalTokens += planUsage.totalTokens;
     pushEvent(run, cb, "plan", `Generated ${plan.scenarios.length} scenario(s).`, { scenarios: plan.scenarios.map((s) => s.title) });
+    if (run.requirements.length > 0) {
+      pushEvent(run, cb, "plan", `Tracking ${run.requirements.length} explicit requirement(s): ${run.requirements.map((r) => r.text).join(", ")}`);
+    }
     await runRepo.save(run);
 
     const history: string[] = [];
@@ -134,11 +166,15 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
       pushEvent(run, cb, "reason", "Asking model for next action.");
       let decision;
       let usage;
+      const outstanding = run.requirements.filter((r) => r.status === "not_tested" || r.status === "in_progress");
+      const historyWithReqs = outstanding.length > 0
+        ? `${history.join("\n")}\nOutstanding requirements (must be tested before finishing): ${outstanding.map((r) => r.text).join(", ")}`
+        : `${history.join("\n")}\nAll explicit requirements have been evaluated.`;
       try {
         const res = await adapter.nextAction({
           observation,
           plan,
-          history: history.join("\n"),
+          history: historyWithReqs,
           objective: project.objective,
         });
         decision = res.decision;
@@ -187,6 +223,15 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
       if (assertion) {
         run.assertions.push(assertion);
         pushEvent(run, cb, "verify", assertion.passed ? `Assertion passed: ${assertion.description}` : `Assertion FAILED: ${assertion.description}`, { assertion });
+        // Update requirement coverage for assert_text matching an explicit requirement.
+        if (action.type === "assert_text") {
+          const req = run.requirements.find((r) => r.text.toLowerCase() === action.text.toLowerCase());
+          if (req) {
+            req.status = assertion.passed ? "passed" : "failed";
+            req.evidence = assertion.evidenceRef;
+            pushEvent(run, cb, "verify", `Requirement "${req.text}" ${req.status}.`, { requirement: req });
+          }
+        }
         if (!assertion.passed && assertion.expected.trim() !== "" && !run.findings.some((f) => f.title === `Assertion failed: ${assertion.description}`)) {
           // create finding
           // Grounding check: an expectation is "grounded" only when it is explicitly
@@ -244,11 +289,22 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
       await runRepo.save(run);
 
       if (action.type === "finish") {
+        const uncovered = run.requirements.filter((r) => r.status === "not_tested" || r.status === "in_progress");
+        if (uncovered.length > 0 && stepCount < project.maxSteps - 1) {
+          pushEvent(run, cb, "adapt", `Finish deferred: ${uncovered.length} requirement(s) still untested: ${uncovered.map((r) => r.text).join(", ")}`);
+          history.push(`Do not finish yet. Untested requirements: ${uncovered.map((r) => r.text).join(", ")}`);
+          stepCount++;
+          await runRepo.save(run);
+          continue;
+        }
         finished = true;
         pushEvent(run, cb, "report", "Agent finished execution.");
       }
     }
 
+    for (const r of run.requirements) {
+      if (r.status === "not_tested" || r.status === "in_progress") r.status = "blocked";
+    }
     if (cancelled) {
       run.status = "cancelled";
       pushEvent(run, cb, "info", "Run cancelled by user.");
