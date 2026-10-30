@@ -30,7 +30,9 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000 (or http://127.0.0.1:3000).
+
+For a local-only demo, bind to loopback: `npm run dev:local` (http://127.0.0.1:3000).
 
 Demo flow:
 1. Click "New project".
