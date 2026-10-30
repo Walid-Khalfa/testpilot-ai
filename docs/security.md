@@ -21,4 +21,6 @@
 - Egress filtering is best-effort at the Playwright context level
 - Local demo mode weakens SSRF protection and must remain disabled in production
 - API routes are unauthenticated in the MVP; deploy behind an authenticated gateway/reverse proxy before public exposure
+- Requirements API (`/api/requirements`) is restricted to localhost (host + origin header checks) for local development only; use `npm run dev:local` to bind exclusively to 127.0.0.1
+- The API is not authenticated; do not expose publicly. Cross-origin browser requests are blocked by the absence of CORS headers plus the origin check.
 - Synchronous execution endpoint may exceed serverless request timeouts for long runs; use bounded limits or async polling in production

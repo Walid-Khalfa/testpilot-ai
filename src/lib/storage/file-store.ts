@@ -39,6 +39,13 @@ export interface RunRepository {
   delete(id: string): Promise<void>;
 }
 
+export interface RequirementDocumentRepository {
+  list(projectId: string): Promise<import("../schemas").RequirementDocument[]>;
+  get(projectId: string, id: string): Promise<import("../schemas").RequirementDocument | null>;
+  save(doc: import("../schemas").RequirementDocument): Promise<void>;
+  delete(projectId: string, id: string): Promise<void>;
+}
+
 class FileProjectRepository implements ProjectRepository {
   private dir() { return path.join(dataDir(), "projects"); }
   private file(id: string) { return path.join(this.dir(), `${id}.json`); }
@@ -81,5 +88,33 @@ class FileRunRepository implements RunRepository {
   }
 }
 
+class FileRequirementDocumentRepository implements RequirementDocumentRepository {
+  private dir() { return path.join(dataDir(), "requirement-docs"); }
+  private file(projectId: string) { return path.join(this.dir(), `${projectId}.json`); }
+  private async readAll(projectId: string): Promise<import("../schemas").RequirementDocument[]> {
+    const v = await readJson<import("../schemas").RequirementDocument[]>(this.file(projectId));
+    return v || [];
+  }
+  private async writeAll(projectId: string, docs: import("../schemas").RequirementDocument[]): Promise<void> {
+    await writeJson(this.file(projectId), docs);
+  }
+  async list(projectId: string) { return this.readAll(projectId); }
+  async get(projectId: string, id: string) {
+    const docs = await this.readAll(projectId);
+    return docs.find((d) => d.id === id) || null;
+  }
+  async save(doc: import("../schemas").RequirementDocument) {
+    const docs = await this.readAll(doc.projectId);
+    const idx = docs.findIndex((d) => d.id === doc.id);
+    if (idx >= 0) docs[idx] = doc; else docs.push(doc);
+    await this.writeAll(doc.projectId, docs);
+  }
+  async delete(projectId: string, id: string) {
+    const docs = await this.readAll(projectId);
+    await this.writeAll(projectId, docs.filter((d) => d.id !== id));
+  }
+}
+
 export const projectRepo: ProjectRepository = new FileProjectRepository();
 export const runRepo: RunRepository = new FileRunRepository();
+export const requirementDocRepo: RequirementDocumentRepository = new FileRequirementDocumentRepository();

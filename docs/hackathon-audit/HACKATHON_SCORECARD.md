@@ -1,0 +1,38 @@
+# HACKATHON SCORECARD — TESTPILOT AI
+**Competition:** Meta Global AI Developer Hackathon 2026
+**Track:** Track 1 — Indie Developer ("Push the Frontier")
+**Official Indie Track Pillars:** *Creativity*, *Technical Ambition*, *Functionality ("Whether it works")*
+
+> **Rubric Transparency Note:** Official Meta / Cerebral Valley public rules define the three Indie Track judging criteria qualitatively (*Creativity*, *Technical Ambition*, *Functionality*) without publishing numeric sub-weights. Below, we map those official pillars into a rigorous 10-category, 100-point jury evaluation scorecard.
+
+---
+
+## 1. Detailed 10-Category Evaluation Table
+
+| Category (10 pts each) | Official Track Pillar | Current Score | Post-Fix Potential | Evidence from Repository | Main Weakness | Highest-Impact Improvement |
+|---|---|---:|---:|---|---|---|
+| **1. Innovation & Creativity** | Creativity | **7.5 / 10** | **8.8 / 10** | Epistemic split between user-grounded `confirmed` findings vs. LLM-inferred `suspected` findings (`runner.ts:241-256`); Requirement Coverage termination gate (`runner.ts:291-299`). | Core "LLM + Playwright loop" is a crowded category; novelty is hidden in backend code rather than foregrounded visually. | Highlight the **Anti-Hallucination Oracle** (Confirmed vs. Suspected + Requirement Coverage) as the central thesis of the 3-minute demo. |
+| **2. Technical Sophistication** | Technical Ambition | **8.0 / 10** | **8.8 / 10** | Next.js 16, strict TypeScript (`0` errors), Zod discriminated unions (`schemas/index.ts`), SSRF DNS/IP guards (`url-safety.ts`), 3-retry Zod self-repair loop (`modal.ts:245-283`), 23 automated Vitest tests. | Synchronous blocking `/api/runs/[id]/execute` route; silent fallback to `formFields[0]` (`modal.ts:266`) masks bad model locators. | Remove silent `formFields[0]` overwrite so Zod self-repair actually fixes missing locators; wire console/network errors into findings. |
+| **3. Genuine Agent Autonomy** | Technical Ambition | **6.8 / 10** | **8.5 / 10** | Live runs (`230850ed`, `03fdbca4`) show `Muse-Spark-Open-816B-A42B` planning scenarios, synthesizing form data, clicking, asserting, and adapting. | System prompt (`modal.ts:236`) forbids asserting text not already in `observation`, sabotaging negative assertions unless rescued by Phase 6H's requirement prompt. | Fix `modal.ts:195,236` prompts to allow asserting user-expected outcomes that *should* appear after an action, and strip the spoiler banner from `public/demo-shop/index.html`. |
+| **4. Meta Model Integration** | Creativity & Ambition | **6.5 / 10** | **8.2 / 10** | Real `meta-models/Muse-Spark-Open-816B-A42B` inference via Modal (`7.8k–12.6k` tokens/run), `/api/ai/ping` health probe, token & cost telemetry. | Text-only JSON calls with `reasoning_effort: "low"` and `enable_thinking: false` (`modal.ts:87-88`); screenshots captured on every step are never sent to the multimodal model. | Enable reasoning effort for `planTests` (or pass base64 screenshot to Muse Spark Open multimodal input, or showcase multi-requirement reasoning on a realistic page). |
+| **5. Defect Detection Reliability** | Functionality | **7.0 / 10** | **9.0 / 10** | Catches the defective checkout (`230850ed`) and passes the control checkout (`03fdbca4`) with 0 false positives. | **Bug:** Locator-scoped `assert_text` (`executor.ts:223-230`) calls `loc.first().innerText()` without `isVisible()`, passing on `display:none` elements! Console/network errors (`runner.ts:285`) are dropped. | Add `await loc.first().isVisible()` check in `executor.ts:229` and implement the missing 6 lines for console/network error findings in `runner.ts:285`. |
+| **6. User Experience (UI/UX)** | Functionality | **7.5 / 10** | **8.5 / 10** | Clean Tailwind dashboard, project creation with safety budgets, run detail view with Requirement Coverage badges, timeline rationales, screenshots, and 1-click HTML report export. | Clicking **"Run test"** freezes on `"Running..."` for 15–25s before redirecting (`RunButton.tsx:12-24`); no live polling and no Cancel button in UI. | Poll `/api/runs/[id]` or redirect immediately after run creation so the user/judge sees live status, or pre-open a completed run alongside a fast live run in the video. |
+| **7. Demonstration Quality** | Functionality & Creativity | **6.8 / 10** | **9.0 / 10** | Paired defective (`index.html`) vs. control (`success.html`) scenarios provide a clear scientific A/B proof. | `public/demo-shop/index.html` literally displays `"This page contains an intentionally introduced defect..."`, causing the model's reasoning log to say `"despite intentional defect noted"`. | Neutralize `index.html` and `success.html` copy so both look like a realistic e-commerce checkout without tipping off the LLM or the judges. |
+| **8. Competitive Differentiation** | Creativity | **7.2 / 10** | **8.5 / 10** | Unlike Playwright MCP (interactive copilot tool) or naive LLM wrappers, TestPilot AI enforces **Requirement Coverage** + **Oracle Grounding** (`confirmed` vs `suspected`) + **Self-Contained Audit Artifacts**. | Value proposition in README reads like a generic browser agent rather than leading with its strongest innovation (Oracle Grounding & Requirement Coverage). | Reframe README, submission text, and demo around **"Zero-Hallucination Autonomous QA: Grounded Oracles vs. LLM Speculation."** |
+| **9. Documentation & Reproducibility** | Functionality | **8.5 / 10** | **9.2 / 10** | Comprehensive `README.md`, `.env.example`, `docs/architecture.md`, `docs/security.md`, `docs/modal-billing.md`, and deterministic `MockModelAdapter` for offline CI (`23/23` tests pass). | `docs/submission.md:27` is stale ("12 automated tests" instead of 23; omits Requirement Coverage). | Update `docs/submission.md` to reflect 23 tests, Phase 6H Requirement Coverage, and exact live run metrics. |
+| **10. Overall Submission Readiness** | All Pillars | **8.2 / 10** | **9.0 / 10** | Clean git tree (`f8c2be0`), zero leaked secrets, working Webpack/Next build, verified live Modal runs persisted in `.data/`. | Pre-Phase-6H runs (`0e91075d`, `f5066ab1`) with empty `requirements: []` and spoiler reasoning are still sitting in `.data/runs/`. | Apply P0 fixes, delete old `.data/runs/`, run 1 fresh defective + 1 fresh success live run, and update `docs/submission.md`. |
+| **TOTAL SCORE** | | **74.0 / 100** | **87.5 / 100** | | | |
+
+---
+
+## 2. Score Summary by Official Indie Track Criteria
+
+| Official Meta Indie Track Criterion | Current Rating | Post-P0/P1 Rating | Summary Assessment |
+|---|---|---|---|
+| **1. Creativity** | **7.3 / 10** | **8.6 / 10** | Strong conceptual twist on AI QA (Requirement Coverage + Epistemic Grounding of `confirmed` vs. `suspected` defects), held back only by text-only usage of a multimodal Meta model. |
+| **2. Technical Ambition** | **7.6 / 10** | **8.7 / 10** | Impressive solo-developer full-stack execution: custom agent loop, Playwright engine, SSRF/DNS security layer, Zod self-healing, and 23 integration/unit tests. |
+| **3. Functionality ("Whether it works")** | **7.5 / 10** | **9.0 / 10** | Works end-to-end with real Meta Muse Spark Open inference. Fixing the demo spoiler text and the locator visibility bug eliminates the two main functional credibility risks. |
+
+- **Current Evidence-Based Score:** **74 / 100**
+- **Realistic Score After P0 + P1 Improvements (1–2 hours effort):** **87.5 / 100**
+- **Confidence Level:** **High (90%)** — All source files, test suites, and persisted `.data/runs/*.json` telemetry from actual Modal `Muse-Spark-Open-816B-A42B` executions were directly inspected and executed.

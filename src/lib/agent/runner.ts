@@ -1,6 +1,7 @@
 import type { Run, Project, TimelineEvent, AssertionResult, Finding, ActionResult } from "../schemas";
-import { runRepo } from "../storage/file-store";
+import { runRepo, requirementDocRepo } from "../storage/file-store";
 import { createModelAdapter } from "../ai";
+import { retrieveRequirements } from "../rag/retrieve";
 import { BrowserExecutor } from "../browser/executor";
 import type { AgentAction, RequirementCoverage } from "../schemas";
 import { RequirementCoverageSchema } from "../schemas";
@@ -130,6 +131,23 @@ export async function executeRun(run: Run, project: Project, cb: RunCallbacks = 
     pushEvent(run, cb, "plan", "Requesting test plan from model.");
     const { plan, usage: planUsage } = await adapter.planTests(observation, project.objective, project.instructions);
     run.scenarios = plan.scenarios;
+    // Retrieve requirements from uploaded specifications (RAG, deterministic).
+    try {
+      const docs = await requirementDocRepo.list(project.id);
+      const candidates = docs.flatMap((d) => d.requirements.map((r) => ({ id: r.id, text: r.text, documentId: d.id, section: r.section })));
+      const retrieved = retrieveRequirements(project.objective + " " + (project.instructions || ""), candidates, 3);
+      const existing = new Set(run.requirements.map((r) => r.text.toLowerCase()));
+      for (const r of retrieved) {
+        if (existing.has(r.text.toLowerCase())) continue;
+        existing.add(r.text.toLowerCase());
+        run.requirements.push(r);
+      }
+      if (retrieved.length > 0) {
+        pushEvent(run, cb, "plan", `Retrieved ${retrieved.length} requirement(s) from uploaded specifications.`, { retrieved: retrieved.map((r) => ({ id: r.id, score: r.score, source: r.documentId })) });
+      }
+    } catch (err) {
+      pushEvent(run, cb, "info", `Requirement retrieval skipped: ${err instanceof Error ? err.message : String(err)}`);
+    }
     run.tokenUsage.promptTokens += planUsage.promptTokens;
     run.tokenUsage.completionTokens += planUsage.completionTokens;
     run.tokenUsage.totalTokens += planUsage.totalTokens;

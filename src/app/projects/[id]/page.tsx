@@ -1,6 +1,7 @@
 import { projectRepo, runRepo } from "@/lib/storage/file-store";
 import Link from "next/link";
 import { RunButton } from "./RunButton";
+import { RequirementsUpload } from "./RequirementsUpload";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         </div>
         <RunButton projectId={project.id} />
       </div>
+      <RequirementsUpload projectId={project.id} />
       <div className="rounded border bg-white p-4 shadow-sm">
         <h2 className="mb-2 font-semibold">Configuration</h2>
         <dl className="grid grid-cols-2 gap-2 text-sm">

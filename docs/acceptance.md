@@ -14,7 +14,7 @@
 | 10 | SSRF protection / domain allowlist | PASS | `tests/unit/url-safety.test.ts` (3 tests) |
 | 11 | Bounded runs (steps/duration/pages/tokens) | PASS | Enforced in `executeRun`; verified in runs |
 | 12 | No arbitrary JS execution | PASS | Typed action schema; no eval in executor |
-| 13 | Typecheck / lint / tests / build | PASS | 0 errors; 23 tests passed; build succeeded |
+| 13 | Typecheck / lint / tests / build | PASS | 0 errors; 47 tests passed; build succeeded |
 | 22 | Requirement coverage (user-authored) | PASS | 7 integration tests; pass/fail/blocked verified |
 | 14 | Screenshots in UI | PASS | `/api/screenshots` + Image components |
 | 14b | Live Meta inference (real request + tokens) | PASS | `/api/ai/ping` ok:true; run recorded 24k+ tokens |

@@ -36,7 +36,7 @@
 
 - `npm run typecheck`: PASS (0 errors)
 - `npm run lint`: PASS (0 errors)
-- `npm run test`: PASS (16 tests, 5 files)
+- `npm run test`: PASS (47 tests, 8 files)
 - `npm run build` (Turbopack): FAIL (environment-specific; see #5)
 - `npm run build:webpack`: PASS
 - Defective scenario: completed, confirmed finding with evidence.

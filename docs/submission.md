@@ -20,7 +20,7 @@ TestPilot AI is an autonomous, verifiable QA agent: OBSERVE → REASON → PLAN 
 - Playwright browser executor with accessibility locators, SSRF protection, domain allowlisting, egress restriction, bounded runs.
 - File-based storage with repository interfaces (Supabase-ready).
 - Requirement Coverage engine tracking explicit user-authored requirements (`not_tested`, `passed`, `failed`, `blocked`) with termination gating and grounded defect classification (`confirmed` vs. `suspected`).
-- 26 automated tests (unit + integration), typecheck, lint, build all pass.
+- 47 automated tests (unit + integration), typecheck, lint, build all pass.
 
 ## Evidence
 - Paired realistic checkout fixtures (defective submit failure vs. working confirmation).

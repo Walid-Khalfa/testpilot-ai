@@ -203,10 +203,25 @@ export type RequirementStatus = z.infer<typeof RequirementStatusSchema>;
 export const RequirementCoverageSchema = z.object({
   id: z.string(),
   text: z.string(),
-  source: z.enum(["objective", "instructions"]),
+  source: z.enum(["objective", "instructions", "retrieved"]),
   status: RequirementStatusSchema,
   evidence: z.string().optional(),
+  documentId: z.string().optional(),
+  section: z.string().optional(),
+  score: z.number().optional(),
 });
+
+export const RequirementDocumentSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  filename: z.string().min(1).max(120),
+  mimeType: z.enum(["text/plain", "text/markdown"]),
+  size: z.number().int().nonnegative(),
+  uploadedAt: z.string().datetime(),
+  content: z.string(),
+  requirements: z.array(RequirementCoverageSchema).default([]),
+});
+export type RequirementDocument = z.infer<typeof RequirementDocumentSchema>;
 export type RequirementCoverage = z.infer<typeof RequirementCoverageSchema>;
 
 export const RunStatusSchema = z.enum([
