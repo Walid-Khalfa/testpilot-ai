@@ -1,90 +1,402 @@
 # TestPilot AI
 
-Autonomous, verifiable AI-powered QA testing agent. Built for the Meta Global AI Developer Hackathon 2026 (Indie Developer track, "Push the Frontier").
+**Autonomous, evidence-driven AI-powered web QA testing agent.**
 
-TestPilot AI explores an authorized web application, generates test scenarios using a Meta model, executes real browser actions with Playwright, captures evidence, and produces a QA report with findings and reproduction steps.
+Built for the **Meta Global AI Developer Hackathon 2026** - Indie Developer track, *Push the Frontier*.
 
-## Status
+TestPilot AI uses Meta Muse Spark Open to reason about web applications, select browser actions, and guide autonomous testing. Playwright executes real browser interactions and assertions, while the application records findings, screenshots, requirement coverage, and reproducible QA evidence.
 
-- Phase 1 (foundation) — complete
-- Phase 2 (browser engine) — complete
-- Phase 3 (AI layer) - complete; live Meta Muse Spark Open inference verified via Modal dedicated endpoint
-- Phase 4 (agent loop) — complete (end-to-end verified against demo fixture)
-- Phase 5 (reporting) — complete (HTML report download)
-- Phase 6 (demo & polish) — complete (live Meta integration verified, screenshots, billing docs, tests)
+The project is a **local demonstration MVP**, not a production-ready testing service.
 
-## Stack
+## Key Features
 
-- Next.js 16 (App Router), TypeScript strict, Tailwind CSS
-- Zod for schemas and model-output validation
-- Playwright for browser automation
-- File-based storage adapter (repository interfaces; Supabase-ready)
-- Modal dedicated endpoint for Meta Muse Spark Open (OpenAI-compatible)
+- **Autonomous QA agent:** Observe → Reason → Plan → Act → Verify → Adapt → Report.
+- **Meta-powered reasoning:** Meta Muse Spark Open generates testing scenarios and selects browser actions.
+- **Multimodal observations:** Screenshots can be supplied to the model alongside structured browser observations.
+- **Real browser automation:** Playwright executes typed actions, including navigation, form interactions, clicks, and assertions.
+- **Requirements RAG:** Upload TXT or Markdown specifications and retrieve relevant requirements using deterministic keyword matching.
+- **Requirement coverage:** Track expected outcomes as `not_tested`, `in_progress`, `passed`, `failed`, or `blocked`.
+- **Evidence-backed findings:** Record failed assertions, screenshots, execution history, and reproduction information.
+- **HTML reporting:** Download self-contained reports containing execution details and embedded screenshots.
+- **Deterministic mock mode:** Exercise the workflow locally without paid inference.
+- **Safety controls:** Target allowlists, action validation, execution limits, and isolated browser contexts.
 
-## Quick start
+## Technology Stack
+
+| Component | Technology |
+|---|---|
+| Frontend | Next.js 16, React, TypeScript, Tailwind CSS |
+| AI model | Meta Muse Spark Open |
+| Model inference | Modal dedicated endpoint |
+| Browser automation | Playwright |
+| Schema validation | Zod |
+| Requirements retrieval | Deterministic keyword-based RAG |
+| Storage | File-based repository adapters |
+| Testing | Vitest |
+| Reporting | Self-contained HTML |
+
+## Architecture
+
+TestPilot AI follows a bounded agent workflow:
+
+1. **Observe:** Collect browser state, visible text, interactive elements, and screenshots.
+2. **Reason:** Send structured observations to Meta Muse Spark Open.
+3. **Plan:** Generate test scenarios from the testing objective.
+4. **Act:** Select and execute permitted Playwright actions.
+5. **Verify:** Evaluate browser assertions against expected outcomes.
+6. **Adapt:** Use execution history and failures to select subsequent actions.
+7. **Report:** Persist execution evidence, findings, and requirement coverage.
+
+The initial plan is generated once. The agent can adapt subsequent actions, but full dynamic replanning is not currently implemented.
+
+Model-generated decisions are validated before execution. Browser actions and assertions are performed by application code rather than by arbitrary model-generated JavaScript.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js and npm compatible with Next.js 16.
+- Playwright browser dependencies.
+- A local development environment.
+- Optional Modal endpoint credentials for live Meta inference.
+
+### Installation
+
+Clone the repository:
 
 ```bash
+git clone https://github.com/Walid-Khalfa/testpilot-ai.git
+cd testpilot-ai
 npm install
-cp .env.example .env.local
-# edit .env.local: set ALLOW_LOCAL_DEMO=true for the demo fixture
-npm run dev
+npx playwright install chromium
 ```
 
-Open http://localhost:3000 (or http://127.0.0.1:3000).
+### Environment configuration
 
-For a local-only demo, bind to loopback: `npm run dev:local` (http://127.0.0.1:3000).
+Create `.env.local` using the documented environment variable names.
 
-Demo flow:
-1. Click "New project".
-2. Use defaults (target URL `http://localhost:3000/demo-shop/index.html`, authorized domain `localhost`).
-3. Confirm authorization and create.
-4. Click "Run test".
-5. View the run: the agent fills the form, submits, asserts "Order confirmed", fails, records a confirmed finding.
-6. Download the HTML report.
+If a tracked `.env.example` is available:
+
+**Windows PowerShell:**
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+**macOS / Linux:**
+
+```bash
+cp .env.example .env.local
+```
+
+Configure the local demo setting:
+
+```dotenv
+ALLOW_LOCAL_DEMO=true
+```
+
+For live inference, configure the Modal provider and the required endpoint credentials as documented in the project.
+
+**Important:** The October 31 audit found that `.env.example` was not tracked in Git. The template must be added before the copy commands above can work on a fresh clone. Do not commit real credentials.
+
+### Start the application
+
+For the recommended local-only demonstration:
+
+```bash
+npm run dev:local
+```
+
+Open:
+
+http://127.0.0.1:3000
+
+This command is intended to bind the application to the loopback interface.
+
+Do not expose the MVP directly to the public internet. Its application APIs do not implement production-grade authentication or authorization.
+
+## Running the Demo
+
+TestPilot AI includes two controlled checkout fixtures.
+
+| Fixture | Purpose |
+|---|---|
+| `/demo-shop/index.html` | Defective checkout |
+| `/demo-shop/success.html` | Successful checkout |
+
+### Defective checkout
+
+1. Open the dashboard.
+2. Create a new project.
+3. Select the authorized local demo shop.
+4. Enter a testing objective requiring the confirmation text `"Order confirmed"`.
+5. Start the test run.
+6. Review the executed browser actions and assertions.
+7. Inspect the missing-confirmation finding and screenshot.
+8. Download the HTML report.
+
+The defective fixture intentionally prevents the confirmation message from appearing.
+
+Historical live-model runs have demonstrated this defect with recorded browser actions, failed assertions, and screenshot evidence.
+
+### Successful checkout
+
+Run the same expectation against:
+
+```text
+http://127.0.0.1:3000/demo-shop/success.html
+```
+
+The successful fixture displays the expected confirmation.
+
+Historical runs have demonstrated a passing requirement with no confirmed findings.
+
+These examples validate the controlled scenarios; they do not establish a general false-positive rate.
+
+## Meta Muse Spark Open Integration
+
+TestPilot AI integrates:
+
+```text
+meta-models/Muse-Spark-Open-816B-A42B
+```
+
+through a Modal dedicated inference endpoint using an OpenAI-compatible API.
+
+The adapter is implemented in:
+
+```text
+src/lib/ai/modal.ts
+```
+
+The model is responsible for generating scenarios, reasoning about browser observations, and selecting permitted actions.
+
+The application performs deterministic execution, assertion evaluation, state tracking, and report generation.
+
+### Multimodal Reasoning
+
+The adapter supports image-bearing requests containing screenshot data alongside textual observations.
+
+Multimodal requests are selective rather than mandatory for every action.
+
+A text-only fallback is available when multimodal processing fails.
+
+Historical execution records demonstrate image-bearing inference. However, improvements in accuracy or speed attributable specifically to vision have not been established through controlled benchmarks.
+
+### Mock Mode
+
+A deterministic mock adapter is available for local development and automated testing.
+
+Mock execution is explicitly distinct from live Meta inference.
+
+### Inference Costs
+
+Modal dedicated endpoints are billed according to their compute configuration and usage.
+
+Token counts are recorded for observability when provided by the inference service.
+
+The application's `estimatedCostUsd` value is an approximation, not a verified Modal invoice or GPU cost measurement.
+
+Consult `docs/modal-billing.md` and the Modal dashboard for infrastructure and billing information.
+
+Stop unused dedicated compute resources to avoid unnecessary charges.
+
+## Requirements RAG
+
+TestPilot AI supports lightweight retrieval-augmented testing from uploaded specifications.
+
+### Supported documents
+
+- Plain text (`.txt`).
+- Markdown (`.md`).
+
+### Retrieval workflow
+
+1. Upload a specification to a project.
+2. Extract candidate requirements from supported text patterns.
+3. Assign deterministic identifiers.
+4. Retrieve relevant candidates using keyword overlap.
+5. Add retrieved information to the agent's execution context.
+6. Record available retrieval metadata and coverage information.
+
+The current implementation uses keyword-based retrieval with a relevance threshold and a maximum of three retrieved requirements.
+
+It does not use vector embeddings, semantic search, or a vector database.
+
+### Important limitations
+
+Requirements RAG is an experimental MVP capability.
+
+- Extraction is limited to supported quoted-text and requirement-language patterns.
+- Retrieved requirements influence action selection after the initial planning stage.
+- Requirement verification relies on narrow assertion matching.
+- Some specification-only requirements may remain unverified or blocked.
+- Provenance may be incomplete after deduplication.
+- The HTML report does not yet display all document identifiers, sections, and retrieval scores.
+- Uploaded documents must be treated as untrusted data; prompt-injection resistance is not guaranteed.
+
+Therefore, TestPilot AI should not be described as providing comprehensive specification-to-test traceability or complete automatic requirements verification.
+
+## Requirement Coverage
+
+The agent tracks explicit expected outcomes independently of model-generated hypotheses.
+
+Supported coverage states:
+
+| State | Meaning |
+|---|---|
+| `not_tested` | No relevant assertion has been evaluated |
+| `in_progress` | Defined state; not consistently assigned by the current runner |
+| `passed` | A matching assertion succeeded |
+| `failed` | A matching assertion failed |
+| `blocked` | Verification could not be completed within the execution constraints |
+
+Coverage is currently based on limited requirement extraction and exact assertion matching.
+
+A confirmed finding should not be interpreted as a guarantee that a defect is reproducible across arbitrary applications.
+
+Known limitations include premature assertion failures, incomplete reconciliation of later successful assertions, and narrow grounding rules.
+
+## QA Reports
+
+TestPilot AI generates downloadable HTML reports containing available execution evidence, including:
+
+- Run metadata and execution status.
+- Model and token telemetry.
+- Browser action history.
+- Assertions and findings.
+- Screenshots.
+- Reproduction information.
+- Requirement coverage.
+- Available requirement-source metadata.
+
+Screenshots can be embedded directly in the HTML report.
+
+Document-level provenance is not yet fully represented in the report.
+
+PDF export is not currently supported.
 
 ## Validation
 
+Run the automated checks:
+
 ```bash
-npm run typecheck   # tsc --noEmit
-npm run lint        # eslint
-npm run test        # vitest
-npm run build       # next build (Turbopack)
-npm run build:webpack # next build (Webpack fallback)
+npm run typecheck
+npm run lint
+npm run test
+npm run build:webpack
 ```
+
+**Audited baseline - October 31, 2026:**
+
+- 47 automated tests passed across 8 files.
+- TypeScript validation passed.
+- ESLint completed with zero warnings.
+- Webpack build completed.
+
+**Build limitation:** The audit identified missing Tailwind utility styling in the Webpack production output. The local development interface rendered correctly.
+
+Use `npm run dev:local` for the hackathon demonstration until the production styling issue is resolved.
+
+Passing automated tests does not establish broad reliability across arbitrary websites.
 
 ## Security
 
-- Explicit target authorization confirmation and domain allowlisting.
-- URL normalization, DNS resolution, blocking of private/loopback/link-local/metadata IPs (SSRF protection).
-- Redirect validation.
-- Browser network egress restricted to the authorized origin.
-- Bounded runs: max steps, duration, pages, token budget, concurrency.
-- No arbitrary JavaScript execution; LLM output validated with Zod before any action.
-- No secrets in the repository; `.env*` ignored.
+TestPilot AI is intended for testing applications that the operator is explicitly authorized to access.
+
+Implemented controls include:
+
+- Explicit target authorization confirmation.
+- URL and domain validation.
+- Selected SSRF and private-network checks.
+- Typed browser actions.
+- Zod validation of model decisions.
+- Isolated Playwright browser contexts.
+- Step, time, and token budgets.
+- Screenshot-path restrictions.
+- HTML escaping for report text.
+
+### Security limitations
+
+The current MVP does not provide complete protection against malicious targets or users.
+
+Known limitations include:
+
+- Incomplete network egress and SSRF enforcement.
+- Unauthenticated project, run, and inference endpoints.
+- Localhost Host-header checks that do not constitute authentication.
+- Potential prompt injection from retrieved documents.
+- Best-effort token, duration, and concurrency limits.
+- File-storage identifier and path-containment weaknesses.
+- No production-grade tenant isolation.
+
+**Only run the local demo with trusted specifications and authorized fixtures.**
+
+Do not expose the application as a publicly accessible service without further security hardening.
 
 See `docs/security.md`.
 
-## Model integration
+## Project Status
 
-Meta **Muse Spark Open** via a Modal **Dedicated Endpoint** (OpenAI-compatible). The adapter lives in `src/lib/ai/modal.ts`. When `MODAL_PROXY_TOKEN` and `MODAL_MODEL_ID` are set, it is used; otherwise the app falls back to a deterministic `MockModelAdapter` and labels runs accordingly. Live Meta inference has been verified (`/api/ai/ping` returns ok:true; an end-to-end run recorded non-zero tokens).
+The following capabilities have been implemented:
 
-Billing: this is a dedicated endpoint (compute/GPU time), not per-token. See `docs/modal-billing.md`. The `estimatedCostUsd` field is a per-token approximation for observability only.
+- Application foundation and project dashboard.
+- Playwright browser execution.
+- Meta Muse Spark Open model adapter.
+- Autonomous agent orchestration.
+- Multimodal screenshot input.
+- Requirement Coverage.
+- Lightweight requirements RAG.
+- Evidence-backed HTML reporting.
+- Automated regression tests.
+- Local checkout demonstration fixtures.
 
-## Demo defect
+The application is feature-frozen for hackathon submission.
 
-`public/demo-shop/index.html` contains an intentionally introduced defect: the submit handler prevents default and never displays the expected "Order confirmed" confirmation. The agent detects this through a real Playwright assertion and records a confirmed finding with a screenshot and reproduction steps.
+## Known Limitations
 
-## Requirement coverage
+- Local MVP only; no production authentication or multi-user support.
+- File-based storage under `.data/`, unsuitable for durable cloud deployment.
+- Synchronous execution may exceed serverless request timeouts.
+- No PDF report export.
+- No PDF specification ingestion.
+- No semantic/vector RAG.
+- No MCP integration.
+- No guaranteed recovery or dynamic replanning.
+- Narrow requirement-to-assertion matching.
+- Incomplete requirement provenance in reports.
+- Limited finding reconciliation.
+- No validated general false-positive rate.
+- Best-effort execution and inference budgets.
+- Production Webpack styling issue.
+- No verified Modal GPU spending guarantee.
 
-TestPilot AI tracks explicit user-authored requirements (quoted strings in the objective or instructions) independently of model-generated expectations. Each requirement has a state: `not_tested`, `in_progress`, `passed`, `failed`, or `blocked`. The agent cannot finish while requirements remain untested (within safety budgets); untested requirements become `blocked` if limits are reached. Confirmed defects require the expected text to be grounded in user-authored fields, not LLM-invented scenario expectations.
+## Hackathon Submission
 
-Limitation: only quoted strings are extracted as requirements; objectives without quoted text produce no tracked requirements.
+**Event:** Meta Global AI Developer Hackathon 2026
 
-## Known limitations
+**Track:** Indie Developer
 
-- Storage is file-based (`.data/`); not durable across deployments. Swap the repository implementation for Supabase for production.
-- Live Meta inference was verified against a provisioned Modal dedicated endpoint (ping ok:true; defective run recorded a confirmed finding with screenshot; success run completed with 0 findings).
-- The dedicated endpoint's GPU type, scale-to-zero, and compute cost are configured in the Modal dashboard and are not verified by this repository.
-- No PDF export, authentication, or multi-user support in MVP.
-- No PDF export yet (HTML report only).
-- No authentication/multi-user support in MVP.
+**Repository:** https://github.com/Walid-Khalfa/testpilot-ai
+
+Supporting documentation:
+
+- `docs/architecture.md`
+- `docs/security.md`
+- `docs/acceptance.md`
+- `docs/demo-script.md`
+- `docs/submission.md`
+- `docs/submission-checklist.md`
+- `docs/modal-billing.md`
+
+The project demonstrates a practical approach to AI-assisted web QA: model-guided exploration, deterministic browser verification, and inspectable execution evidence.
+
+The demonstration is based on controlled local fixtures and historical live Meta inference runs.
+
+## Responsible Use
+
+TestPilot AI is designed for authorized software testing.
+
+Do not use it to test systems without permission, bypass access controls, or access data belonging to others.
+
+The project is an experimental hackathon prototype and should be evaluated within its documented technical and security limitations.

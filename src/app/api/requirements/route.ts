@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { requirementDocRepo } from "@/lib/storage/file-store";
 import { ingestDocument } from "@/lib/rag/ingest";
 import { retrieveRequirements } from "@/lib/rag/retrieve";
-import crypto from "node:crypto";
 
 function isLocalRequest(req: Request): boolean {
   const host = (req.headers.get("host") || "").toLowerCase().split(":")[0];
